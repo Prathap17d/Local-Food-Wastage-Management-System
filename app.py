@@ -169,7 +169,7 @@ tab_dashboard, tab_charts, tab_CRUD, tab_query = st.tabs([
 
 # TAB 1: EXECUTIVE ANALYTICS VIEW
 with tab_dashboard:
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1, kpi2, kpi3, kpi4, kpi5= st.columns(5)
     with kpi1:
         st.metric(label="Total Providers", value=len(filtered_providers))
     with kpi2:
@@ -178,6 +178,9 @@ with tab_dashboard:
         st.metric(label="Total Claims", value=len(filtered_claims))
     with kpi4:
         st.metric(label="Total Units Volume", value=f"{int(filtered_listings['Quantity'].sum()):,}" if not filtered_listings.empty else "0")
+    with kpi5:
+        unclaimed_count = len(filtered_claims[filtered_claims['Status'].str.lower() == 'pending']) if not filtered_claims.empty else 0
+        st.metric(label="Unclaimed Foods", value=unclaimed_count)    
             
 
     st.markdown("<br>", unsafe_allow_html=True)
