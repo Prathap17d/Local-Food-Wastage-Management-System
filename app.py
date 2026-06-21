@@ -180,8 +180,7 @@ with tab_dashboard:
         st.metric(label="Total Units Volume", value=f"{int(filtered_listings['Quantity'].sum()):,}" if not filtered_listings.empty else "0")
     with kpi5:
         unclaimed_count = len(filtered_claims[filtered_claims['Status'].str.lower() == 'pending']) if not filtered_claims.empty else 0
-        st.metric(label="Unclaimed Foods", value=unclaimed_count)    
-            
+        st.metric(label="Unclaimed Foods", value=unclaimed_count)        
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -481,19 +480,19 @@ with tab_query:
     st.caption("Select an executive business question from the dropdown menu to compute the live MySQL relational data matrix.")
     
     query_options = [
-        "1. Total Food Providers and Receivers Count by City Nodes",
-        "2. Top Food Provider Segment Contribution analysis",
-        "3. Specific Regional Provider Entity Contact Lines",
-        "4. Top Performing Receiver Profile by Completed Transactions",
-        "5. Aggregate Summary: Total Food Volume Units Available",
-        "6. High Density Hub: Top City Node by Postings Frequency",
-        "7. Most Common Commodities Circulating in System",
-        "8. Total Claim Frequencies Logged per Individual Food Item",
-        "9. Most Successful Food Provider Node (Completed Pipeline)",
-        "10. Global Platform Claim Ticket Status Breakdown Metrics (%)",
-        "11. Average Resource Units Safely Claimed per Active Receiver",
-        "12. Peak Volume Demand: Most Claimed Meal Category Window",
-        "13. Cumulative Volumetric Contribution Logged per Provider",
+        "1. How many food providers and receivers are there in each city?",
+        "2. Which type of food provider (restaurant, grocery store, etc.) contributes the most food?",
+        "3. What is the contact information of food providers in a specific city?",
+        "4. Which receivers have claimed the most food?",
+        "5. What is the total quantity of food available from all providers?",
+        "6. Which city has the highest number of food listings?",
+        "7. What are the most commonly available food types?",
+        "8. How many food claims have been made for each food item?",
+        "9. Which provider has had the highest number of successful food claims?",
+        "10. What percentage of food claims are completed vs. pending vs. canceled?",
+        "11. What is the average quantity of food claimed per receiver?",
+        "12. Which meal type (breakfast, lunch, dinner, snacks) is claimed the most?",
+        "13. What is the total quantity of food donated by each provider?",
         "14. Risk Assessment: Avg Days Left Before Expiry at Claim Phase",
         "15. Trust Metrics Leadership: Most Reliable System Providers"
     ]
@@ -504,17 +503,18 @@ with tab_query:
     if selected_query.startswith("1."):
         st.subheader("📋 Food Providers & Receivers Breakdown per City")
         sql = """
-            SELECT 
-                City,
-                SUM(Is_Provider) AS Total_Providers,
-                SUM(Is_Receiver) AS Total_Receivers
-            FROM (
-                SELECT City, 1 AS Is_Provider, 0 AS Is_Receiver FROM providers
-                UNION ALL
-                SELECT City, 0 AS Is_Provider, 1 AS Is_Receiver FROM receivers
-            ) AS combined_cities
-            GROUP BY City
-            ORDER BY Total_Providers DESC, Total_Receivers DESC;
+            select 
+            city,
+            sum(is_provider) as total_providers,
+            sum(is_receiver) as total_receivers
+            from ( 
+            select city, 1 as is_provider,0 as is_receiver from providers
+            union all
+            select city,0 as is_provider,1 as is_receiver from receivers
+            ) as combined_cities
+            group by city
+            order by total_providers desc,
+            total_receivers desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -522,10 +522,9 @@ with tab_query:
     elif selected_query.startswith("2."):
         st.subheader("🏢 Top Volume Contribution by Provider Business Model Type")
         sql = """
-            SELECT provider_type, SUM(quantity) AS total_quantity_donated 
-            FROM food_listings
-            GROUP BY provider_type
-            ORDER BY total_quantity_donated DESC;
+            select provider_type,sum(quantity) as total_quantity_donated from food_listings
+            group by  provider_type
+            order by total_quantity_donated desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -533,9 +532,8 @@ with tab_query:
     elif selected_query.startswith("3."):
         st.subheader("📍 Target Contact Register (City: Valentineside)")
         sql = """
-            SELECT name, type, address, contact 
-            FROM providers
-            WHERE city = 'Valentineside';
+            select name,type,address,contact from providers
+            where city='Valentineside';
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -543,23 +541,18 @@ with tab_query:
     elif selected_query.startswith("4."):
         st.subheader("🏆 Leading Receiver Node by Completed Claim Volume Entries")
         sql = """
-            SELECT 
-                r.name AS receiver_name,
-                r.type AS receiver_type,
-                COUNT(c.claim_id) AS total 
-            FROM receivers r
-            LEFT JOIN claims c ON r.receiver_id = c.receiver_id
-            WHERE c.status = 'Completed'
-            GROUP BY r.receiver_id, receiver_name, receiver_type
-            ORDER BY total DESC 
-            LIMIT 1;
+            select r.receiver_id,r.name,count(c.claim_id) as claimed_count
+            from receivers r
+            join claims c on r.receiver_id=c.receiver_id
+            group by r.receiver_id,r.name
+            order by claimed_count desc limit 1; 
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
         
     elif selected_query.startswith("5."):
         st.subheader("📊 Global Supply Availability: Total Accumulated Food Units")
-        sql = "SELECT SUM(quantity) AS total_food_units FROM food_listings;"
+        sql = "select sum(quantity) as total_food_units from food_listings;"
         df_q = run_mysql_query(sql)
         if not df_q.empty:
             total_val = df_q.iloc[0, 0] or 0
@@ -569,11 +562,9 @@ with tab_query:
     elif selected_query.startswith("6."):
         st.subheader("📍 Leading Urban Node by Listing Post Density")
         sql = """
-            SELECT location, COUNT(*) AS total 
-            FROM food_listings
-            GROUP BY location
-            ORDER BY total DESC 
-            LIMIT 1;
+            select location,count(*) as total from food_listings
+            group by location
+            order by total desc limit 1;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -581,10 +572,9 @@ with tab_query:
     elif selected_query.startswith("7."):
         st.subheader("🍎 Top Commodity Profiles Circulated Across Network")
         sql = """
-            SELECT food_type, COUNT(*) AS total, SUM(quantity) AS total_quantity 
-            FROM food_listings
-            GROUP BY food_type
-            ORDER BY total DESC;
+            select food_type,count(*) as total,sum(quantity) as total_quantity from food_listings
+            group by food_type
+            order by total desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -592,11 +582,11 @@ with tab_query:
     elif selected_query.startswith("8."):
         st.subheader("📋 Pipeline Demand: Claim Requests Made Per Individual Item Name")
         sql = """
-            SELECT f.food_name AS food_name, COUNT(c.claim_id) AS total_claims 
-            FROM food_listings f
-            LEFT JOIN claims c ON f.food_id = c.food_id
-            GROUP BY f.food_name
-            ORDER BY total_claims DESC;
+            select f.food_name as food_name,
+            count(c.claim_id) as total_claims from food_listings f
+            left join claims c on f.food_id=c.food_id
+            group by food_name
+            order by total_claims desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -604,14 +594,13 @@ with tab_query:
     elif selected_query.startswith("9."):
         st.subheader("🏅 Top Performing Provider by Successful Pipeline Fulfillment Logs")
         sql = """
-            SELECT p.name AS name, p.type AS provider_type, COUNT(c.claim_id) AS total_successful_claim
-            FROM providers p
-            INNER JOIN food_listings f ON p.provider_id = f.provider_id
-            INNER JOIN claims c ON f.food_id = c.food_id
-            WHERE c.Status = 'Completed'
-            GROUP BY p.provider_id, p.name, p.type
-            ORDER BY total_successful_claim DESC 
-            LIMIT 1;
+            select p.name as name,p.type as provider_type,count(c.claim_id) as total_successful_claim
+            from providers p
+            inner join food_listings f on p.provider_id=f.provider_id
+            inner join claims c on f.food_id=c.food_id
+            where c.Status = 'Completed'
+            group by name,type
+            order by total_successful_claim desc limit 1;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -619,12 +608,11 @@ with tab_query:
     elif selected_query.startswith("10."):
         st.subheader("📊 Ticket Exceptions & Fulfillment Status Distribution (%)")
         sql = """
-            SELECT 
-                Status, 
-                COUNT(*) AS Total_Count,
-                ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM claims)), 2) AS Percentage
-            FROM claims
-            GROUP BY Status;
+            select
+            round((count(case when status ="Completed" then 1 end)/count(*))*100,2) as pcnt_completed,
+            round((count(case when status ="pending" then 1 end)/count(*))*100,2) as pcnt_pending,
+            round((count(case when status ="Cancelled" then 1 end)/count(*))*100,2) as pcnt_cancelled
+            from claims;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -632,14 +620,15 @@ with tab_query:
     elif selected_query.startswith("11."):
         st.subheader("🥣 Mean Resource Unit Volumetric Capacities Allocated per Receiver Node")
         sql = """
-            SELECT ROUND(AVG(avg_food_quantity), 2) AS avg_quantity_per_receiver FROM (
-                SELECT r.name AS receiver_name, AVG(f.quantity) AS avg_food_quantity 
-                FROM receivers r
-                INNER JOIN claims c ON r.receiver_id = c.receiver_id
-                INNER JOIN food_listings f ON c.food_id = f.food_id
-                WHERE c.status = 'Completed'
-                GROUP BY r.receiver_id, r.name
-            ) t;
+            select
+            round(avg(avg_food_quantity),2) as avg_quantity_per_receiver from (
+            select
+            r.name as receiver_name,avg(f.quantity) as avg_food_quantity from receivers r
+            inner join claims c on r.receiver_id=c.receiver_id
+            inner join food_listings f on c.food_id=f.food_id
+            where c.status='Completed'
+            group by r.receiver_id,receiver_name
+            order by avg_food_quantity desc) t;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -647,13 +636,11 @@ with tab_query:
     elif selected_query.startswith("12."):
         st.subheader("⏱️ Peak System Demand: Most Claimed Meal Window Assignment")
         sql = """
-            SELECT f.meal_type, COUNT(c.claim_id) AS total_claimed 
-            FROM food_listings f
-            INNER JOIN claims c ON f.food_id = c.food_id
-            WHERE c.status = 'Completed'
-            GROUP BY f.meal_type
-            ORDER BY total_claimed DESC 
-            LIMIT 1;
+            select f.meal_type,count(c.claim_id) as total_claimed from food_listings f
+            inner join claims c on f.food_id=c.food_id
+            where c.status='Completed'
+            group by meal_type
+            order by total_claimed desc limit 1;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -661,11 +648,10 @@ with tab_query:
     elif selected_query.startswith("13."):
         st.subheader("🚛 Total Aggregated Volume Units Provided per Unique Entity")
         sql = """
-            SELECT p.name AS provider_name, SUM(f.quantity) AS total_qty_provided 
-            FROM providers p
-            INNER JOIN food_listings f ON p.provider_id = f.provider_id
-            GROUP BY p.provider_id, provider_name
-            ORDER BY total_qty_provided DESC;
+            select p.name as provider_name,sum(f.quantity) as total_qty_provided from providers p
+            inner join food_listings f on p.provider_id=f.provider_id
+            group by p.provider_id,provider_name
+            order by total_qty_provided desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -673,16 +659,15 @@ with tab_query:
     elif selected_query.startswith("14."):
         st.subheader("⏳ Quality Assurance: Mean Days Remaining Before Expiry at Claim Entry")
         sql = """
-            SELECT 
-                f.provider_type,
-                f.food_type,
-                COUNT(c.claim_id) AS total_claims,
-                ROUND(AVG(DATEDIFF(f.expiry_date, c.timestamp)), 1) AS Avg_Days_Left_Before_Expiry
-            FROM food_listings f
-            INNER JOIN claims c ON f.food_id = c.food_id
-            WHERE c.status = 'Completed'
-            GROUP BY f.provider_type, f.food_type
-            ORDER BY Avg_Days_Left_Before_Expiry ASC;
+            select f.provider_type,
+            f.food_type, 
+            count(c.claim_id),
+            round(avg(datediff(f.expiry_date,c.timestamp)),1) as avg_days_left_before_expiry
+            from food_listings f
+            inner join claims c on f.food_id=c.food_id
+            where c.status='Completed'
+            group by provider_type,food_type
+            order by avg_days_left_before_expiry asc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
@@ -690,18 +675,17 @@ with tab_query:
     elif selected_query.startswith("15."):
         st.subheader("🤝 Reliability Scorecard (Entities with Min. 5 System Shipments)")
         sql = """
-            SELECT 
-                p.name AS provider_name,
-                p.type AS provider_type,
-                COUNT(c.claim_id) AS total_claims,
-                SUM(CASE WHEN c.status = 'Completed' THEN 1 ELSE 0 END) AS successful_claims,
-                ROUND((SUM(CASE WHEN c.status = 'Completed' THEN 1 ELSE 0 END) / COUNT(c.claim_id)) * 100, 2) AS successful_claim_pcnt
-            FROM providers p
-            JOIN food_listings f ON p.provider_id = f.provider_id
-            JOIN claims c ON f.food_id = c.food_id
-            GROUP BY p.provider_id, provider_name, provider_type 
-            HAVING total_claims >= 5
-            ORDER BY successful_claim_pcnt DESC;
+            select p.name as provider_name,
+            p.type as provider_type,
+            count(c.claim_id) as total_claims,
+            sum(case when c.status='Completed' then 1 else 0 end) as successful_claims,
+            round((sum(case when c.status='Completed' then 1 else 0 end)/count(c.claim_iD))*100,2) as successful_claim_pcnt
+            from providers p
+            join food_listings f on p.provider_id=f.provider_id
+            join claims c on f.food_id=c.food_id
+            group by p.provider_id,provider_name,provider_type 
+            having total_claims >= 5
+            order by successful_claim_pcnt desc;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
