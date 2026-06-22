@@ -617,11 +617,12 @@ with tab_query:
     elif selected_query.startswith("10."):
         st.subheader("📊 Ticket Exceptions & Fulfillment Status Distribution (%)")
         sql = """
-            select
-            round((count(case when status ="Completed" then 1 end)/count(*))*100,2) as pcnt_completed,
-            round((count(case when status ="pending" then 1 end)/count(*))*100,2) as pcnt_pending,
-            round((count(case when status ="Cancelled" then 1 end)/count(*))*100,2) as pcnt_cancelled
-            from claims;
+            select 
+            status, 
+            count(*) as total_count,
+            round((count(*) *100.0/(select count(*) from claims)),2) as percentage
+            from claims
+            group by status;
         """
         df_q = run_mysql_query(sql)
         st.dataframe(df_q, use_container_width=True)
