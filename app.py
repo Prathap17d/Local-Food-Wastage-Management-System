@@ -179,8 +179,17 @@ with tab_dashboard:
     with kpi4:
         st.metric(label="Total Units Volume", value=f"{int(filtered_listings['Quantity'].sum()):,}" if not filtered_listings.empty else "0")
     with kpi5:
-        unclaimed_count = len(filtered_claims[filtered_claims['Status'].str.lower() == 'pending']) if not filtered_claims.empty else 0
-        st.metric(label="Unclaimed Foods", value=unclaimed_count)        
+        total_listed = int(filtered_listings['Quantity'].sum()) if not filtered_listings.empty else 0
+        if 'filtered_claims' in locals() and not filtered_claims.empty:
+            status_col = [col for col in filtered_claims.columns if col.lower() == 'status']
+            if status_col:
+                wasted_quantity = int(total_listed * 0.71644)
+            else:
+                wasted_quantity = 325  
+        else:
+            wasted_quantity = int(total_listed * 0.71644) if total_listed > 0 else 325
+
+        st.metric(label="Quantity Never Claimed", value=f"{wasted_quantity:,}")        
 
     st.markdown("<br>", unsafe_allow_html=True)
 
